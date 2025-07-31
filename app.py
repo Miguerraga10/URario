@@ -26,40 +26,38 @@ os.makedirs(directorio_usuarios, exist_ok=True)
 st.set_page_config(page_title="Generador de Horarios UNAL", layout="wide")
 st.title("Generador de Horarios UNAL")
 
-# Autenticación simple por nombre de usuario
-usuario = st.text_input("Usuario", value="")
-if usuario:
-    ruta_historial = os.path.join(directorio_usuarios, f"{usuario}_historial.json")
-    ruta_materias = os.path.join(directorio_usuarios, f"{usuario}_materias.json")
+from constantes import sedes_unal, carreras_por_facultad
 
-    st.subheader("Carga tu historial académico")
-    historial_file = st.file_uploader("Sube tu historial académico (JSON)", type=["json"])
-    if historial_file:
-        historial_data = json.load(historial_file)
-        with open(ruta_historial, "w", encoding="utf-8") as f:
-            json.dump(historial_data, f, ensure_ascii=False, indent=2)
-        st.success("Historial guardado correctamente.")
-    elif os.path.exists(ruta_historial):
-        with open(ruta_historial, "r", encoding="utf-8") as f:
-            historial_data = json.load(f)
-        st.info("Historial académico cargado.")
-    else:
+st.subheader("Selecciona la sede y carrera")
+sede_seleccionada = st.selectbox("Sede", [s for s in sedes_unal if "MEDELLÍN" in s])
+facultades = sorted(carreras_por_facultad.keys())
+facultad_seleccionada = st.selectbox("Facultad", facultades)
+carreras = carreras_por_facultad.get(facultad_seleccionada, [])
+carrera_seleccionada = st.selectbox("Carrera", carreras)
+
+st.subheader("Carga tu historial académico manualmente")
+historial_texto = st.text_area("Pega aquí tu historial académico (formato JSON o texto estructurado)", value="", height=150)
+if st.button("Procesar historial académico"):
+    try:
+        historial_data = json.loads(historial_texto)
+        st.success("Historial académico procesado correctamente.")
+    except Exception as e:
+        st.error(f"Error al procesar el historial: {e}")
         historial_data = None
+else:
+    historial_data = None
 
-    st.subheader("Carga tus materias posibles")
-    materias_file = st.file_uploader("Sube tus materias posibles (JSON)", type=["json"])
-    if materias_file:
-        materias_data = json.load(materias_file)
-        with open(ruta_materias, "w", encoding="utf-8") as f:
-            json.dump(materias_data, f, ensure_ascii=False, indent=2)
-        st.success("Materias guardadas correctamente.")
-    elif os.path.exists(ruta_materias):
-        with open(ruta_materias, "r", encoding="utf-8") as f:
-            materias_data = json.load(f)
-        st.info("Materias posibles cargadas.")
-    else:
+st.subheader("Carga tus materias posibles manualmente")
+materias_texto = st.text_area("Pega aquí tus materias posibles (formato JSON o texto estructurado)", value="", height=150)
+if st.button("Procesar materias posibles"):
+    try:
+        materias_data = json.loads(materias_texto)
+        st.success("Materias procesadas correctamente.")
+    except Exception as e:
+        st.error(f"Error al procesar las materias: {e}")
         materias_data = None
-        st.warning("Debes subir el archivo de materias posibles. No se puede extraer automáticamente.")
+else:
+    materias_data = None
 
     # Parámetros para generar horarios
     st.subheader("Parámetros de generación de horario")
@@ -166,5 +164,3 @@ if usuario:
                 st.error("No se pudo generar un horario óptimo.")
         else:
             st.error("Debes cargar tus materias posibles primero.")
-else:
-    st.info("Ingresa tu usuario para comenzar.")
