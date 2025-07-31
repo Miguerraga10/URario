@@ -1,0 +1,27 @@
+{
+  "Facultad de Ingeniería": [
+    "Ingeniería de Sistemas",
+    "Ingeniería Civil",
+    "Ingeniería Química",
+    "Ingeniería Eléctrica"
+  ],
+  "Facultad de Ciencias Exactas y Naturales": [
+    "Matemáticas",
+    "Física",
+    "Química"
+  ],
+  "Facultad de Artes": [
+    "Artes Plásticas",
+    "Música"
+  ],
+  "Facultad de Ciencias Sociales y Humanas": [
+    "Historia",
+    "Filosofía"
+  ],
+  "Facultad de Medicina": [
+    "Medicina"
+  ],
+  "Facultad de Derecho y Ciencias Políticas": [
+    "Derecho"
+  ]
+}
