@@ -1,6 +1,8 @@
 import re, json
-from Clases import Clase, Grupo, Materia
-from datetime import datetime
+from Clases.Clase import Clase
+from Clases.Grupo import Grupo
+from Clases.Horario import Horario
+from Clases.Materia import Materiafrom datetime import datetime
 import locale
 
 # Dividir horarios UdeA
