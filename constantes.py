@@ -3,7 +3,10 @@ import json
 import os
 
 # Cargar carreras y facultades de UNAL solo una vez
-with open(r'd:\Miguel\Universidad\Gen_Horario\sia-extractor-main\data\carreras.json', encoding='utf-8') as f:
+DATA_PATH = os.path.join(os.path.dirname(__file__), 'sia-extractor-main', 'data', 'carreras.json')
+if not os.path.exists(DATA_PATH):
+    raise FileNotFoundError(f"No se encontró el archivo de carreras en {DATA_PATH}. Por favor, verifica la ruta y que el archivo exista.")
+with open(DATA_PATH, encoding='utf-8') as f:
     carreras_data = json.load(f)
 
 facultades_unal = sorted(set(item['facultad'] for item in carreras_data))
