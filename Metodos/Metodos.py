@@ -135,10 +135,10 @@ def extraer_informacion(texto, obligatoria, universidad_seleccionada):
                     horarios=[
                         Clase(
                             nombre=nombre_materia,
-                            dia=h['dia'],
-                            hora_inicio=h['inicio'],
-                            hora_fin=h['fin'],
-                            lugar=h['lugar']
+                            dia=h.get('dia', h.get('Dia', '')),
+                            hora_inicio=h.get('inicio', h.get('hora_inicio', '')),
+                            hora_fin=h.get('fin', h.get('hora_fin', '')),
+                            lugar=h.get('lugar', '')
                         ) for h in g['horarios']
                     ],
                     creditos=0,
