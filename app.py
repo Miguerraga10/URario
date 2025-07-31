@@ -60,7 +60,15 @@ if st.button("Procesar materia"):
     materia_obj = extraer_informacion(materia_texto, obligatoria=False, universidad_seleccionada=universidad_materia)
     if materia_obj:
         st.success(f"Materia procesada: {materia_obj.nombre}")
-        st.write(materia_obj)
+        # Mostrar información relevante de la materia
+        st.markdown(f"**Nombre:** {materia_obj.nombre}")
+        st.markdown(f"**Código:** {getattr(materia_obj, 'codigo', '')}")
+        st.markdown(f"**Créditos:** {getattr(materia_obj, 'creditos', '')}")
+        st.markdown(f"**Grupos:** {len(materia_obj.grupos)}")
+        for grupo in materia_obj.grupos:
+            st.markdown(f"- Grupo: {getattr(grupo, 'grupo', '')}, Cupos: {getattr(grupo, 'cupos', '')}")
+            for clase in grupo.horarios:
+                st.markdown(f"    - {clase.dia} {clase.hora_inicio}-{clase.hora_fin} {clase.lugar}")
     else:
         st.error("No se pudo procesar la materia. Verifica el formato del texto.")
 
