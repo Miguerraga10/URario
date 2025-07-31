@@ -1,10 +1,23 @@
 import streamlit as st
 import json
 import os
+import textwrap
 from M10horariosplus import generar_horarios, obtener_facultades_por_sede, obtener_carreras_por_facultad_nivel_sede
 from Clases.Materia import Materia
 from Clases.Grupo import Grupo
 from Clases.Clase import Clase
+def colores_futuristas():
+    return [
+        "#00fff7", "#ff00ea", "#39ff14", "#faff00", "#ff005b",
+        "#00b3ff", "#ff9100", "#a020f0", "#00ff85", "#ff61a6"
+    ]
+
+def color_futuro(materia, colores_materias, paleta, usar_colores=True):
+    if not usar_colores or not materia:
+        return "#222831"
+    if materia not in colores_materias:
+        colores_materias[materia] = paleta[len(colores_materias) % len(paleta)]
+    return colores_materias[materia]
 
 # Carpeta donde se guardan los historiales de cada usuario
 directorio_usuarios = "usuarios"
@@ -107,22 +120,48 @@ if usuario:
             )
             if horario:
                 st.success("Horario generado correctamente.")
-                # Mostrar horario en tabla
-                horario_data = []
-                for dia, horas in horario.dias.items():
-                    for hora, clase in horas.items():
-                        if clase:
-                            horario_data.append({
-                                "Día": dia,
-                                "Hora": hora,
-                                "Materia": clase.nombre,
-                                "Grupo": clase.grupo,
-                                "Lugar": clase.lugar
-                            })
-                if horario_data:
-                    st.dataframe(horario_data)
+                # Visualización dinámica de horario
+                colores_materias = {}
+                paleta = colores_futuristas()
+                dias_con_clases = [dia for dia in horario.dias if any(horario.dias[dia].values())]
+                todas_las_horas = horario.horas() if hasattr(horario, 'horas') else []
+                horas_con_clases = [hora for hora in todas_las_horas if any(horario.dias[dia].get(hora) for dia in dias_con_clases)]
+                if horas_con_clases:
+                    horas_rango = todas_las_horas[todas_las_horas.index(horas_con_clases[0]):todas_las_horas.index(horas_con_clases[-1]) + 1]
+                else:
+                    horas_rango = []
+                # Construir tabla estilo horario
+                st.markdown("## Horario generado")
+                if dias_con_clases and horas_rango:
+                    import pandas as pd
+                    horario_df = pd.DataFrame(index=horas_rango, columns=dias_con_clases)
+                    for dia in dias_con_clases:
+                        for hora in horas_rango:
+                            clase = horario.dias[dia].get(hora)
+                            if clase:
+                                horario_df.at[hora, dia] = clase.nombre
+                            else:
+                                horario_df.at[hora, dia] = ""
+                    def color_cells(val):
+                        return f'background-color: {color_futuro(val, colores_materias, paleta)}; color: #fff;' if val else ''
+                    st.dataframe(horario_df.style.applymap(color_cells))
                 else:
                     st.info("No hay clases asignadas en el horario.")
+                # Selector de grupos dinámico
+                st.markdown("### Selección de grupos por materia")
+                columnas = st.columns(4)
+                materias_seleccionadas_dict = {}
+                for idx, materia in enumerate(materias_objs):
+                    grupos_fuente = getattr(materia, 'grupos_originales', materia.grupos)
+                    grupos_disponibles = [str(grupo.grupo) for grupo in grupos_fuente]
+                    valor_defecto = grupos_disponibles[0] if grupos_disponibles else ""
+                    with columnas[idx % 4]:
+                        seleccion = st.selectbox(f"{materia.nombre}", grupos_disponibles, index=0 if valor_defecto else -1, key=f"grupo_{materia.nombre}")
+                        materias_seleccionadas_dict[materia.nombre] = seleccion
+                # Mostrar resumen de selección
+                st.markdown("#### Resumen de selección de grupos")
+                resumen = pd.DataFrame(list(materias_seleccionadas_dict.items()), columns=["Materia", "Grupo seleccionado"])
+                st.dataframe(resumen)
             else:
                 st.error("No se pudo generar un horario óptimo.")
         else:
