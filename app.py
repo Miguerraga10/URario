@@ -26,38 +26,44 @@ os.makedirs(directorio_usuarios, exist_ok=True)
 st.set_page_config(page_title="Generador de Horarios UNAL", layout="wide")
 st.title("Generador de Horarios UNAL")
 
-from constantes import sedes_unal, carreras_por_facultad
 
-st.subheader("Selecciona la sede y carrera")
-sede_seleccionada = st.selectbox("Sede", [s for s in sedes_unal if "MEDELLÍN" in s])
-facultades = sorted(carreras_por_facultad.keys())
-facultad_seleccionada = st.selectbox("Facultad", facultades)
-carreras = carreras_por_facultad.get(facultad_seleccionada, [])
-carrera_seleccionada = st.selectbox("Carrera", carreras)
+# Menú solo Facultad de Minas y carreras específicas
+st.subheader("Selecciona la carrera de la Facultad de Minas")
+FACULTAD_MINAS = "FACULTAD DE MINAS"
+CARRERAS_MINAS = [
+    {"nombre": "Ingeniería Administrativa", "codigo": "3515"},
+    {"nombre": "Ingeniería de Sistemas e Informática", "codigo": "3534"}
+]
+carrera_opciones = [f"{c['nombre']} ({c['codigo']})" for c in CARRERAS_MINAS]
+carrera_seleccionada = st.selectbox("Carrera", carrera_opciones)
+
+
 
 st.subheader("Carga tu historial académico manualmente")
-historial_texto = st.text_area("Pega aquí tu historial académico (formato JSON o texto estructurado)", value="", height=150)
+historial_texto = st.text_area("Pega aquí tu historial académico (texto plano del SIA)", value="", height=150)
 if st.button("Procesar historial académico"):
-    try:
-        historial_data = json.loads(historial_texto)
-        st.success("Historial académico procesado correctamente.")
-    except Exception as e:
-        st.error(f"Error al procesar el historial: {e}")
-        historial_data = None
-else:
-    historial_data = None
+    from Revisa_Materias import extraer_materias_aprobadas
+    materias_aprobadas = extraer_materias_aprobadas(historial_texto)
+    if materias_aprobadas:
+        st.success(f"Materias aprobadas extraídas: {len(materias_aprobadas)}")
+        st.write(materias_aprobadas)
+    else:
+        st.warning("No se encontraron materias aprobadas en el historial.")
 
-st.subheader("Carga tus materias posibles manualmente")
-materias_texto = st.text_area("Pega aquí tus materias posibles (formato JSON o texto estructurado)", value="", height=150)
-if st.button("Procesar materias posibles"):
-    try:
-        materias_data = json.loads(materias_texto)
-        st.success("Materias procesadas correctamente.")
-    except Exception as e:
-        st.error(f"Error al procesar las materias: {e}")
-        materias_data = None
-else:
-    materias_data = None
+
+
+st.subheader("Añade una materia manualmente")
+materia_texto = st.text_area("Pega aquí la información de la materia (texto plano del SIA)", value="", height=150)
+universidad_materia = st.radio("Universidad de la materia", ["UNAL", "UdeA"])
+if st.button("Procesar materia"):
+    from Metodos.Metodos import extraer_informacion
+    materia_obj = extraer_informacion(materia_texto, obligatoria=False, universidad_seleccionada=universidad_materia)
+    if materia_obj:
+        st.success(f"Materia procesada: {materia_obj.nombre}")
+        st.write(materia_obj)
+    else:
+        st.error("No se pudo procesar la materia. Verifica el formato del texto.")
+
 
     # Parámetros para generar horarios
     st.subheader("Parámetros de generación de horario")
@@ -100,9 +106,27 @@ else:
             materias_objs.append(materia_obj)
         return materias_objs
 
+    # Permitir agregar varias materias manualmente
+    if 'materias_manuales' not in st.session_state:
+        st.session_state['materias_manuales'] = []
+
+    if st.button("Agregar materia a la lista"):
+        if 'materia_obj' in locals() and materia_obj:
+            st.session_state['materias_manuales'].append(materia_obj)
+            st.success(f"Materia '{materia_obj.nombre}' añadida a la lista.")
+        else:
+            st.warning("Primero procesa una materia válida.")
+
+    st.markdown("### Materias añadidas")
+    if st.session_state['materias_manuales']:
+        for m in st.session_state['materias_manuales']:
+            st.write(f"- {m.nombre}")
+    else:
+        st.info("No has añadido materias aún.")
+
     if st.button("Generar horario óptimo"):
-        if materias_data:
-            materias_objs = dict_to_obj_materias(materias_data)
+        materias_objs = st.session_state['materias_manuales']
+        if materias_objs:
             horario = generar_horarios(
                 materias_objs,
                 mincreditos=mincreditos,
@@ -163,4 +187,4 @@ else:
             else:
                 st.error("No se pudo generar un horario óptimo.")
         else:
-            st.error("Debes cargar tus materias posibles primero.")
+            st.error("Debes añadir materias primero.")
