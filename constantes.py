@@ -28,15 +28,18 @@ sedes_unal = [
     "1124 SEDE ORINOQUIA", "1104 SEDE PALMIRA", "9920 SEDE TUMACO"
 ]
 
-# Guardar carreras y facultades en archivos JSON
-with open(r'd:\Miguel\Universidad\Gen_Horario\Datos\facultades_unal.json', 'w', encoding='utf-8') as f:
+# Guardar carreras y facultades en archivos JSON en la carpeta Datos relativa al proyecto
+DATOS_DIR = os.path.join(os.path.dirname(__file__), 'Datos')
+os.makedirs(DATOS_DIR, exist_ok=True)
+
+with open(os.path.join(DATOS_DIR, 'facultades_unal.json'), 'w', encoding='utf-8') as f:
     json.dump(facultades_unal, f, ensure_ascii=False, indent=2)
 
-with open(r'd:\Miguel\Universidad\Gen_Horario\Datos\carreras_por_facultad.json', 'w', encoding='utf-8') as f:
+with open(os.path.join(DATOS_DIR, 'carreras_por_facultad.json'), 'w', encoding='utf-8') as f:
     json.dump(carreras_por_facultad, f, ensure_ascii=False, indent=2)
 
-with open(r'd:\Miguel\Universidad\Gen_Horario\Datos\niveles_unal.json', 'w', encoding='utf-8') as f:
+with open(os.path.join(DATOS_DIR, 'niveles_unal.json'), 'w', encoding='utf-8') as f:
     json.dump(niveles_unal, f, ensure_ascii=False, indent=2)
 
-with open(r'd:\Miguel\Universidad\Gen_Horario\Datos\sedes_unal.json', 'w', encoding='utf-8') as f:
+with open(os.path.join(DATOS_DIR, 'sedes_unal.json'), 'w', encoding='utf-8') as f:
     json.dump(sedes_unal, f, ensure_ascii=False, indent=2)
