@@ -134,31 +134,6 @@ def parsear_intervalos_libres(texto):
     return intervalos if intervalos else None
 horas_libres = parsear_intervalos_libres(intervalos_libres_texto)
 
-
-def dict_to_obj_materias(materias_data):
-    materias_objs = []
-    for m in materias_data:
-        grupos_objs = []
-        for g in m.get('grupos', []):
-            clases_objs = [Clase(**c) for c in g.get('clases', [])]
-            grupo_obj = Grupo(
-                grupo=g.get('grupo'),
-                cupos=g.get('cupos', 0),
-                horarios=clases_objs,
-                clases=clases_objs,
-                creditos=g.get('creditos', m.get('creditos', 0))
-            )
-            grupos_objs.append(grupo_obj)
-        materia_obj = Materia(
-            nombre=m.get('nombre'),
-            creditos=m.get('creditos', 0),
-            grupos=grupos_objs,
-            obligatoria=m.get('obligatoria', False)
-        )
-        materias_objs.append(materia_obj)
-    return materias_objs
-
-
 # Mostrar materias añadidas y posibles
 st.markdown("### Materias añadidas")
 materias_total = st.session_state.get('materias_manuales', [])
