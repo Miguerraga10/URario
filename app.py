@@ -42,8 +42,8 @@ materias_carrera = []
 if carrera_seleccionada != "Selecciona una carrera...":
     # Extraer materias posibles según historial y prerrequisitos
     st.markdown("#### Procesa tu historial académico para ver materias disponibles")
-    historial_texto = st.text_area("Pega aquí tu historial académico (texto plano del SIA)", value="", height=150)
-    if st.button("Procesar historial y ver materias disponibles"):
+    historial_texto = st.text_area("Pega aquí tu historial académico (texto plano del SIA)", value="", height=150, key="historial_carrera")
+    if st.button("Procesar historial y ver materias disponibles", key="btn_procesar_historial_carrera"):
         from Revisa_Materias import extraer_materias_aprobadas, materias_posibles_desde_historial
         materias_aprobadas = extraer_materias_aprobadas(historial_texto)
         if materias_aprobadas:
@@ -65,8 +65,8 @@ if carrera_seleccionada != "Selecciona una carrera...":
 
 
 st.subheader("Carga tu historial académico manualmente")
-historial_texto = st.text_area("Pega aquí tu historial académico (texto plano del SIA)", value="", height=150)
-if st.button("Procesar historial académico"):
+historial_texto = st.text_area("Pega aquí tu historial académico (texto plano del SIA)", value="", height=150, key="historial_manual")
+if st.button("Procesar historial académico", key="btn_procesar_historial_manual"):
     from Revisa_Materias import extraer_materias_aprobadas
     materias_aprobadas = extraer_materias_aprobadas(historial_texto)
     if materias_aprobadas:
