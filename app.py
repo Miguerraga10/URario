@@ -45,21 +45,25 @@ if carrera_seleccionada != "Selecciona una carrera...":
     historial_texto = st.text_area("Pega aquí tu historial académico (texto plano del SIA)", value="", height=150, key="historial_carrera")
     if st.button("Procesar historial y ver materias disponibles", key="btn_procesar_historial_carrera"):
         from Revisa_Materias import extraer_materias_aprobadas, materias_posibles_desde_historial
-        materias_aprobadas = extraer_materias_aprobadas(historial_texto)
+        materias_aprobadas = []
+        if historial_texto.strip():  # Solo procesar si hay texto
+            materias_aprobadas = extraer_materias_aprobadas(historial_texto)
+        
         if materias_aprobadas:
             st.success(f"Materias aprobadas extraídas: {len(materias_aprobadas)}")
             st.write(materias_aprobadas)
-            # Extraer materias posibles para la carrera seleccionada
-            codigo_carrera = carrera_seleccionada.split("(")[-1].replace(")","").strip()
-            materias_carrera = materias_posibles_desde_historial(materias_aprobadas, codigo_carrera)
-            if materias_carrera:
-                st.success(f"Materias posibles para la carrera: {len(materias_carrera)}")
-                for m in materias_carrera:
-                    st.write(f"- {m['nombre']} ({m['codigo']})")
-            else:
-                st.warning("No se encontraron materias posibles para la carrera seleccionada.")
         else:
-            st.warning("No se encontraron materias aprobadas en el historial.")
+            st.info("Historial vacío o sin materias aprobadas (primer semestre).")
+            
+        # Extraer materias posibles para la carrera seleccionada (incluye primer semestre)
+        codigo_carrera = carrera_seleccionada.split("(")[-1].replace(")","").strip()
+        materias_carrera = materias_posibles_desde_historial(materias_aprobadas, codigo_carrera)
+        if materias_carrera:
+            st.success(f"Materias posibles para la carrera: {len(materias_carrera)}")
+            for m in materias_carrera:
+                st.write(f"- {m['nombre']} ({m['codigo']})")
+        else:
+            st.warning("No se encontraron materias posibles para la carrera seleccionada.")
 
 
 
