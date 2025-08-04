@@ -50,8 +50,8 @@ def generar_horarios(materias, mincreditos=8, maxcreditos=float('inf'),
                     minmaterias=1, maxmaterias=float('inf'),
                     hora_inicio="08:00", hora_fin="20:00", usar_cupos=False,
                     maxdias=7, usar_virtuales=True, horas_libres=None):
-    """
-    Genera horarios óptimos considerando restricciones, incluyendo intervalos de horas libres obligatorias.
+    """Genera horarios óptimos considerando restricciones, incluyendo
+    intervalos de horas libres obligatorias.
     Args:
         materias (list): Lista de objetos Materia.
         mincreditos, maxcreditos, minmaterias, maxmaterias, hora_inicio, hora_fin, usar_cupos, maxdias, usar_virtuales: Restricciones generales.
@@ -59,7 +59,6 @@ def generar_horarios(materias, mincreditos=8, maxcreditos=float('inf'),
     Returns:
         Horario óptimo o None.
     """
-    print(horas_libres)
     inicio = time.time()
     creditos_minimos_en_materia = min(m.creditos for m in materias)
     creditos_maximos_en_materia = max(m.creditos for m in materias)
@@ -69,7 +68,8 @@ def generar_horarios(materias, mincreditos=8, maxcreditos=float('inf'),
         maxmaterias = int(maxmaterias_posibles // 1)
     if maxcreditos_posibles < maxcreditos:
         maxcreditos = int(maxcreditos_posibles)
-    materias = [copy.deepcopy(m) for m in materias]
+    # Trabajar siempre sobre copias profundas para no modificar los objetos originales
+    materias = copy.deepcopy(materias)
     
     def hora_a_minutos(hora):
         # Convierte 'HH:MM' a minutos desde las 00:00
@@ -84,18 +84,18 @@ def generar_horarios(materias, mincreditos=8, maxcreditos=float('inf'),
                 inicio_clase = hora_a_minutos(clase.hora_inicio)
                 fin_clase = hora_a_minutos(clase.hora_fin)
                 for intervalo in horas_libres:
-                    # Normalizar días del intervalo
                     dias_libres = [d.strip().lower() for d in intervalo['dias']]
                     if dia_clase in dias_libres:
                         inicio_libre = hora_a_minutos(intervalo['inicio'])
                         fin_libre = hora_a_minutos(intervalo['fin'])
-                        # Traslape total o parcial: inicio_clase < fin_libre y fin_clase > inicio_libre
                         if inicio_clase < fin_libre and fin_clase > inicio_libre:
                             return True
+
         # Restricción de horario general
         for clase in grupo.horarios:
             if not (hora_inicio <= clase.hora_inicio < hora_fin and hora_inicio < clase.hora_fin <= hora_fin):
                 return True
+
         return False
 
     def incompatible(incompatibles, comb):
@@ -121,19 +121,20 @@ def generar_horarios(materias, mincreditos=8, maxcreditos=float('inf'),
         if not hasattr(m, 'grupos_originales'):
             m.grupos_originales = list(m.grupos)
         grupos_validos = [
-            g for g in m.grupos if (
+            g for g in m.grupos_originales if (
                 (not usar_cupos or g.cupos > 0) and
                 (not grupo_fuera_de_intervalo(g)) and
                 (usar_virtuales or not any(c.lugar == "Virtual" for c in g.clases))
             )
         ]
+        # Nunca modificar m.grupos_originales ni m.grupos del objeto original
+        m_copia = copy.deepcopy(m)
+        m_copia.grupos = grupos_validos
         if m.obligatoria and not grupos_validos:
             materias_obligatorias_faltantes.append(m.nombre)
         if grupos_validos:
-            m.grupos = grupos_validos
-            materias_filtradas.append(m)
+            materias_filtradas.append(m_copia)
 
-    # Validación: si falta alguna materia obligatoria, no se puede continuar
     if materias_obligatorias_faltantes:
         st.error(
             "No hay grupos disponibles para las materias obligatorias:\n- " +
@@ -146,7 +147,7 @@ def generar_horarios(materias, mincreditos=8, maxcreditos=float('inf'),
 
     horario_base = Horario()
     hubo_cambios = True
-    materias_asignadas = set()
+    materias_asignadas = []
 
     while hubo_cambios:
         hubo_cambios = False
@@ -158,10 +159,12 @@ def generar_horarios(materias, mincreditos=8, maxcreditos=float('inf'),
             grupo = materia.grupos[0]
             if horario_base.verificar_grupo(grupo):
                 horario_base.agregar_grupo(grupo)
-                materias_asignadas.add(materia.nombre)
+                materias_asignadas.append(materia.nombre)
                 hubo_cambios = True
             else:
-                st.error(f"No se pudo asignar el grupo único de la materia obligatoria: {materia.nombre}")
+                st.error(
+                    f"No se pudo asignar el grupo único de la materia obligatoria: {materia.nombre}"
+                )
                 return None
         for materia in materias_varios_grupos:
             grupos_compatibles = [g for g in materia.grupos if horario_base.verificar_grupo(g)]
@@ -169,8 +172,14 @@ def generar_horarios(materias, mincreditos=8, maxcreditos=float('inf'),
                 hubo_cambios = True
             materia.grupos = grupos_compatibles
         # Eliminar materias sin grupos válidos
-        print(hubo_cambios)
         materias_filtradas = [m for m in materias_filtradas if m.grupos]
+
+
+    if len(materias_obligatorias) > maxmaterias:
+        st.warning(
+            "Hay más materias obligatorias que la cantidad máxima permitida."
+        )
+        return None
 
     # Finalmente, filtrar optativas
     for materia in materias_optativas:
@@ -181,124 +190,114 @@ def generar_horarios(materias, mincreditos=8, maxcreditos=float('inf'),
     materias_obligatorias = [m for m in materias_filtradas if m.obligatoria]
     materias_optativas = [m for m in materias_filtradas if not m.obligatoria]
 
-    if len(materias_obligatorias) > maxmaterias:
-        st.warning(
-            "Hay más materias obligatorias que la cantidad máxima permitida."
-        )
-        return None
-
     grupos_incompatibles = set()
     combinaciones_obligatorias_viables = []
 
     # Buscar combinaciones viables solo con materias obligatorias
-    posibles_combinaciones_obligatorias = product(*[m.grupos for m in materias_obligatorias])
-    for combinacion_obligatorias in posibles_combinaciones_obligatorias:
-        if incompatible(grupos_incompatibles, combinacion_obligatorias):
+    for combinacion_obligatorias in product(*[m.grupos for m in materias_obligatorias]):
+        if any(frozenset((g1, g2)) in grupos_incompatibles for g1, g2 in combinations(combinacion_obligatorias, 2)):
             continue
+
         horario = Horario()
         es_viable = True
+
         for grupo in combinacion_obligatorias:
-            if not verificar_con_cache(horario, grupo):
-                # Creamos un nuevo horario con solo el grupo problemático
-                horario_test = Horario()
-                horario_test.agregar_grupo(grupo)
-                # Verificamos contra los otros grupos
-                for otro_grupo in combinacion_obligatorias:
-                    if otro_grupo != grupo and not verificar_con_cache(horario_test, otro_grupo):
-                        grupos_incompatibles.add(frozenset((grupo, otro_grupo)))
+            if not horario.verificar_grupo(grupo):
                 es_viable = False
+                horario_temp = Horario() 
+                horario.agregar_grupo(grupo)
+                for g1 in combinacion_obligatorias:
+                    if grupo != g1 and not horario_temp.verificar_grupo(g1) and not((frozenset((grupo, g1)) in grupos_incompatibles) or (frozenset((g1, grupo)) in grupos_incompatibles)):
+                        grupos_incompatibles.add(frozenset((grupo, g1)))
                 break
             horario.agregar_grupo(grupo)
-            dias_ocupados = sum(1 for dia in horario.dias if any(horario.dias[dia].values()))
-            if dias_ocupados > maxdias:
-                es_viable = False
-                break
+
         if es_viable:
             combinaciones_obligatorias_viables.append(combinacion_obligatorias)
 
     if not combinaciones_obligatorias_viables:
-        st.warning(
-            'No hay forma de organizar un horario con todas las materias obligatorias.'
-        )
+        st.warning("No hay forma de organizar un horario con todas las materias obligatorias.")
         return None
 
-    creditos_obligatorios = sum(m.creditos for m in materias_obligatorias)
     mejor_horario = None
-    mejor_encontrado = False
     max_materias = 0
     max_creditos = 0
     menor_dias_ocupados = float('inf')
     menor_huecos = float('inf')
     materias_seleccionadas_final = []
     grupos_final_incompatibles = set()
+    mejor_encontrado = False
 
     for num_materias_optativas in range(maxmaterias - len(materias_obligatorias), -1, -1):
         combinaciones_optativas_viables = []
         if mejor_encontrado:
             break
+        
         for combinacion_optativas in combinations(materias_optativas, num_materias_optativas):
-            creditos_asignados = sum(materia.creditos for materia in combinacion_optativas)
-            if creditos_asignados > (maxcreditos - creditos_obligatorios):
-                continue
             for combinacion_grupos in product(*[m.grupos for m in combinacion_optativas]):
-                if incompatible(grupos_incompatibles, combinacion_grupos):
+                if any(frozenset((g1, g2)) in grupos_incompatibles for g1, g2 in combinations(combinacion_grupos, 2)):
                     continue
+                
                 horario = Horario()
                 es_viable = True
                 for grupo in combinacion_grupos:
-                    if not verificar_con_cache(horario, grupo):
-                        # Creamos un nuevo horario with solo el grupo problemático
-                        horario_test = Horario()
-                        horario_test.agregar_grupo(grupo)
-                        # Verificamos contra los otros grupos
-                        for otro_grupo in combinacion_grupos:
-                            if otro_grupo != grupo and not verificar_con_cache(horario_test, otro_grupo):
-                                grupos_incompatibles.add(frozenset((grupo, otro_grupo)))
+                    if not horario.verificar_grupo(grupo):
                         es_viable = False
+                        horario_temp = Horario() 
+                        horario_temp.agregar_grupo(grupo)
+                        for g1 in combinacion_grupos:
+                            if grupo != g1 and not horario_temp.verificar_grupo(g1) and not((frozenset((grupo, g1)) in grupos_incompatibles) or (frozenset((g1, grupo)) in grupos_incompatibles)):
+                                grupos_incompatibles.add(frozenset((grupo, g1)))
                         break
                     horario.agregar_grupo(grupo)
-                    dias_ocupados = sum(1 for dia in horario.dias if any(horario.dias[dia].values()))
-                    if dias_ocupados > maxdias:
-                        es_viable = False
-                        break
+
                 if es_viable:
                     combinaciones_optativas_viables.append(combinacion_grupos)
-        # Evaluar combinaciones de obligatorias y optativas viables
+
         for combinacion_total in product(combinaciones_obligatorias_viables, combinaciones_optativas_viables):
             combinacion_final = list(combinacion_total[0]) + list(combinacion_total[1])
-            if incompatible(grupos_final_incompatibles, combinacion_final):
+
+            if any(frozenset((g1, g2)) in grupos_final_incompatibles for g1, g2 in combinations(combinacion_final, 2)):
                 continue
-            creditos_asignados = sum(grupo.creditos for grupo in combinacion_final)
-            if creditos_asignados > maxcreditos or creditos_asignados < mincreditos:
-                continue
+
             horario = Horario()
             es_viable = True
+
             for grupo in combinacion_final:
-                if not verificar_con_cache(horario, grupo):
-                    # Creamos un nuevo horario con solo el grupo problemático
-                    horario_test = Horario()
-                    horario_test.agregar_grupo(grupo)
+                if not horario.verificar_grupo(grupo):
+                    es_viable = False
+                    horario_temp = Horario() 
+                    horario_temp.agregar_grupo(grupo)
+                    for g1 in combinacion_final:
+                        if grupo != g1 and not horario.verificar_grupo(g1) and not((frozenset((grupo, g1)) in grupos_final_incompatibles) or (frozenset((g1, grupo)) in grupos_final_incompatibles)):
+                            grupos_final_incompatibles.add(frozenset((grupo, g1)))
+                    break
+                    
                 horario.agregar_grupo(grupo)
-            dias_ocupados = sum(1 for dia in horario.dias if any(horario.dias[dia].values()))
+
             if es_viable:
+                creditos_asignados = sum(grupo.creditos for grupo in combinacion_final)
+                if creditos_asignados > maxcreditos or creditos_asignados < mincreditos:
+                    continue  
+
+                dias_ocupados = sum(1 for dia in horario.dias if any(horario.dias[dia].values()))
+                if dias_ocupados > maxdias:
+                    continue  
                 huecos = horario.contar_huecos()
-                if len(combinacion_final) < max_materias:
-                    continue
-                if len(combinacion_final) == max_materias:
-                    if dias_ocupados > menor_dias_ocupados:
-                        continue
-                    if dias_ocupados == menor_dias_ocupados:
-                        if creditos_asignados < max_creditos or (creditos_asignados == max_creditos and huecos > menor_huecos):
-                            continue
-                mejor_horario = horario
-                mejor_encontrado = True
-                max_materias = len(combinacion_final)
-                max_creditos = creditos_asignados
-                menor_dias_ocupados = dias_ocupados
-                menor_huecos = huecos
-                materias_seleccionadas_final = [
-                    (grupo.horarios[0].nombre, grupo.grupo) for grupo in combinacion_final
-                ]
+
+                if ((len(combinacion_final) > max_materias) or
+                    (len(combinacion_final) == max_materias and dias_ocupados < menor_dias_ocupados) or
+                    (len(combinacion_final) == max_materias and dias_ocupados == menor_dias_ocupados and creditos_asignados > max_creditos) or
+                    (len(combinacion_final) == max_materias and dias_ocupados == menor_dias_ocupados and creditos_asignados == max_creditos and huecos < menor_huecos)):
+                    
+                    mejor_horario = horario
+                    mejor_encontrado = True
+                    max_materias = len(combinacion_final)
+                    max_creditos = creditos_asignados
+                    menor_dias_ocupados = dias_ocupados
+                    menor_huecos = huecos
+                    materias_seleccionadas_final = [(grupo.horarios[0].nombre, grupo.grupo) for grupo in combinacion_final]
+
     fin = time.time()
     print(f"Tiempo de ejecución: {fin - inicio:.4f} segundos")
 
